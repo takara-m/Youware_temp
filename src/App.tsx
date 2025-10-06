@@ -79,24 +79,39 @@ function App() {
 
       // プロンプト生成
       const prompt = generateMonsterPrompt(selectedMotif, customPrompt);
+      console.log(`生成プロンプト (${selectedMotif}):`, prompt);
 
       // FormDataを作成
       const formData = new FormData();
       formData.append('image', compressedFile);
       formData.append('prompt', prompt);
+      formData.append('model', 'nano-banana');
+      formData.append('n', '1');
+      formData.append('response_format', 'b64_json');
 
       // API呼び出し（YouWare AIエンドポイント）
-      const apiResponse = await fetch('/api/generate-monster', {
+      const apiResponse = await fetch('https://api.youware.com/public/v1/ai/images/edits', {
         method: 'POST',
+        headers: {
+          Authorization: 'Bearer sk-YOUWARE',
+        },
         body: formData,
       });
 
       if (!apiResponse.ok) {
-        throw new Error('画像生成に失敗しました');
+        const errorData = await apiResponse.json().catch(() => ({}));
+        throw new Error(errorData.message || `API Error: ${apiResponse.status}`);
       }
 
-      const result = await apiResponse.json();
-      setGeneratedImage(result.imageUrl);
+      const data = await apiResponse.json();
+
+      // 生成画像の取得
+      if (data.data && data.data[0] && data.data[0].b64_json) {
+        setGeneratedImage(`data:image/png;base64,${data.data[0].b64_json}`);
+        console.log('モンスター生成成功！');
+      } else {
+        throw new Error('生成された画像データが見つかりません');
+      }
     } catch (err) {
       console.error('Generation error:', err);
       setError(
